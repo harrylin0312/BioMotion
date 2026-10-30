@@ -54,3 +54,23 @@ test('every moving marker identifies its substance or light energy',()=>{
  assert.ok(supply.includes('data-species="atp"'));
  assert.ok(supply.includes('data-species="nadph"'));
 });
+
+// 回歸：動畫標記必須獨立成層，不能混在構造與標籤中。
+test('animation is clipped away from protected static labels at every depth',()=>{
+ for(const [mode,lesson] of Object.entries(lessons))for(let i=0;i<lesson.steps.length;i++)for(const depth of [0,1,2]){
+  const svg=renderScene(mode,i,.48,depth);
+  assert.ok(svg.includes('data-layer="animation" mask="url(#label-clearance)"'));
+  const diagram=svg.split('data-layer="diagram">')[1].split('<defs><mask')[0];
+  assert.ok(!diagram.includes('class="moving-species"'));
+  assert.ok(svg.includes('scale(0.58)'));
+  assert.ok(!svg.includes('class="route-note" data-note="electron"><rect'));
+ }
+});
+test('clearance protects the actual text bounds with breathing room',async()=>{
+ const {protectLabels,LABEL_GAP}=await import('../dist/clearance.js');
+ const holes={innerHTML:''};
+ const svg={querySelectorAll:()=>[{textContent:'ATP',getBBox:()=>({x:50,y:30,width:25,height:12})}],querySelector:()=>holes};
+ protectLabels(svg,'test/clearance');
+ assert.ok(LABEL_GAP>=4);
+ assert.match(holes.innerHTML,/x="46" y="26" width="33" height="20"/);
+});

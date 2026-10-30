@@ -1,5 +1,6 @@
+import {protectLabels,invalidateClearance} from './clearance.js?v=4';
 import {lessons,objects} from './content.js?v=3';
-import {renderScene,species,activeSpecies} from './scenes.js?v=3';
+import {renderScene,species,activeSpecies} from './scenes.js?v=4';
 import {frameAt,advance} from './timeline.js';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let mode='light',progress=0,playing=false,speed=1,depth=1,textLevel=1,selected='ps2',zoom=1,lastTime=0,lastStep=-1;
@@ -18,7 +19,7 @@ function visualKey(){
 }
 function updateText(){visualKey();const i=index(),s=lesson().steps[i];$('#step-label').textContent=`${String(i+1).padStart(2,'0')} / ${lesson().label}`;$('#step-title').textContent=s.title;$('#step-text').textContent=s.text[textLevel];$('#observation').textContent=s.observation;$('#source-ref').textContent=lesson().source;$('#object-title').textContent=objects[selected].title;$('#object-text').textContent=objects[selected].text;}
 function highlight(){let seen=false;$$('#diagram [data-object]').forEach(g=>{const on=g.dataset.object===selected;g.classList.toggle('selected',on);g.setAttribute('aria-label',objects[g.dataset.object]?.title||g.dataset.object);g.setAttribute('aria-pressed',String(on));if(on)seen=true});return seen;}
-function draw(){const i=index();if(lastStep!==i){lastStep=i;selected=lesson().steps[i].object;updateText();$$('[data-step]').forEach(b=>{b.classList.toggle('active',Number(b.dataset.step)===i);b.setAttribute('aria-current',Number(b.dataset.step)===i?'step':'false')});}$('#diagram').innerHTML=renderScene(mode,i,phase(),depth);highlight();$('#progress').value=progress;$('#elapsed').textContent=clock(progress*lesson().steps.length*stepDuration);$('#step-counter').textContent=`步驟 ${i+1} / ${lesson().steps.length}`;}
+function draw(){const i=index();if(lastStep!==i){lastStep=i;selected=lesson().steps[i].object;updateText();$$('[data-step]').forEach(b=>{b.classList.toggle('active',Number(b.dataset.step)===i);b.setAttribute('aria-current',Number(b.dataset.step)===i?'step':'false')});}$('#diagram').innerHTML=renderScene(mode,i,phase(),depth);protectLabels($('#diagram svg'),`${mode}/${i}/${depth}`);highlight();$('#progress').value=progress;$('#elapsed').textContent=clock(progress*lesson().steps.length*stepDuration);$('#step-counter').textContent=`步驟 ${i+1} / ${lesson().steps.length}`;}
 function jump(i){setPlaying(false);progress=Math.max(0,Math.min(i,lesson().steps.length-1))/lesson().steps.length;draw()}
 function setMode(m){mode=m;progress=0;lastStep=-1;selected=lesson().steps[0].object;setPlaying(false);$$('[data-mode]').forEach(b=>{b.classList.toggle('active',b.dataset.mode===m);b.setAttribute('aria-pressed',String(b.dataset.mode===m))});$('#scene-title').textContent=lesson().title;$('#location').textContent=lesson().location;$('#duration').textContent=clock(lesson().steps.length*stepDuration);$('#step-buttons').innerHTML=lesson().steps.map((s,i)=>`<button data-step="${i}" title="${s.title}">${String(i+1).padStart(2,'0')} ${s.title.split('：')[0].split('，')[0]}</button>`).join('');draw();updateText();}
 $$('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
@@ -43,3 +44,6 @@ const mobileSource=document.createElement('button');mobileSource.textContent='�
 document.addEventListener('visibilitychange',()=>{if(document.hidden)setPlaying(false)});
 function frame(time){if(playing){if(lastTime){progress=advance(progress,Math.min(.1,(time-lastTime)/1000),speed,lesson().steps.length,stepDuration);draw();if(progress>=1)setPlaying(false)}lastTime=time}requestAnimationFrame(frame)}
 setMode('light');$('#depth-note').textContent=depthNotes[depth];requestAnimationFrame(frame);
+
+// 字型載入後重新量測，避免舊字寬留下不足的排除區。
+document.fonts?.ready.then(()=>{invalidateClearance();draw()});
