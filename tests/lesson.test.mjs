@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {lessons,objects} from '../dist/content.js';
-import {renderScene} from '../dist/scenes.js';
+import {renderScene,species,activeSpecies} from '../dist/scenes.js';
 import {frameAt,advance} from '../dist/timeline.js';
 
 test('seeking backward reconstructs exactly the same animation state',()=>{
@@ -35,4 +35,22 @@ test('Calvin-cycle diagram retains the textbook carbon split and ATP totals',()=
   for(const label of ['3 CO₂','3 × RuBP','6 × PGA','6 × G3P','5 × G3P','1 G3P 淨輸出','6 ATP + 6 NADPH','3 ATP','18 C = 3 C 輸出 + 15 C 留下'])assert.ok(svg.includes(label),label);
   const simple=renderScene('calvin',2,.5,0);
   assert.ok(!simple.includes('6 × PGA'));
+});
+
+// 所有移動物件均帶身分，圖例必須與圖中的同一份配色表一致。
+test('every moving marker identifies its substance or light energy',()=>{
+ for(const [mode,lesson] of Object.entries(lessons)) for(let step=0;step<lesson.steps.length;step++) {
+  const svg=renderScene(mode,step,.4,1);
+  assert.ok(activeSpecies(mode,step).length);
+  for(const key of activeSpecies(mode,step))assert.ok(species[key]);
+  const markers=[...svg.matchAll(/class="moving-species" data-species="(.*?)"[\s\S]*?<title>(.*?)<\/title>/g)];
+  assert.ok(markers.length,`${mode}/${step} requires identifiable markers`);
+  for(const [,key,title] of markers){assert.ok(species[key]);assert.ok(title.includes(species[key].label));}
+ }
+ const light=renderScene('light',2,.4,0);
+ assert.ok(light.includes('data-note="electron"'));
+ assert.ok(light.includes('data-note="proton"'));
+ const supply=renderScene('bridge',1,.4,1);
+ assert.ok(supply.includes('data-species="atp"'));
+ assert.ok(supply.includes('data-species="nadph"'));
 });
